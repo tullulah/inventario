@@ -1,0 +1,44 @@
+# Dependencies
+node_modules/
+
+# Build
+frontend/dist/
+
+# Database
+backend/data/*.db
+backend/data/*.db-wal
+backend/data/*.db-shm
+
+# Uploads
+backend/uploads/
+
+# Python
+yolo-service/venv/
+yolo-service/__pycache__/
+yolo-service/*.pyc
+yolo-service/.python-version
+
+# YOLO models (downloaded automatically)
+yolo-service/*.pt
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# YOLO models (too large for GitHub)
+*.pt
