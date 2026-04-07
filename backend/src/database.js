@@ -4,6 +4,7 @@ import ws from 'ws';
 // Necesario en Node.js (local y Vercel runtime). En edge/browser usa WebSocket nativo.
 neonConfig.webSocketConstructor = ws;
 
-const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+const connectionString = process.env.DATABASE_URL || process.env.inventario_DATABASE_URL;
+const pool = new Pool({ connectionString });
 
 export default pool;
