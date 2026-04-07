@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "description": "Sistema de inventario con captura de fotos y clasificación YOLO",
   "private": true,
+  "type": "module",
   "workspaces": [
     "frontend",
     "backend"
