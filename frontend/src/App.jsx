@@ -1,5 +1,8 @@
 import { Routes, Route, NavLink, useLocation } from 'react-router-dom'
 import { Home, Camera, ClipboardList, Settings, Package, MapPin } from 'lucide-react'
+import { AuthProvider } from './contexts/AuthContext'
+import PrivateRoute from './components/PrivateRoute'
+import LoginPage from './pages/LoginPage'
 import HomePage from './pages/HomePage'
 import CapturePage from './pages/CapturePage'
 import ReviewPage from './pages/ReviewPage'
@@ -11,45 +14,57 @@ import BaldaDetailPage from './pages/BaldaDetailPage'
 import PrintQueuePage from './pages/PrintQueuePage'
 import PrintSheetPage from './pages/PrintSheetPage'
 
-function App() {
+const navItems = [
+  { path: '/', icon: Home, label: 'Inicio' },
+  { path: '/captura', icon: Camera, label: 'Capturar' },
+  { path: '/ubicaciones', icon: MapPin, label: 'Ubicaciones' },
+  { path: '/inventario', icon: Package, label: 'Inventario' },
+  { path: '/ajustes', icon: Settings, label: 'Ajustes' },
+]
+
+function AppLayout() {
   const location = useLocation()
-  
-  const navItems = [
-    { path: '/', icon: Home, label: 'Inicio' },
-    { path: '/captura', icon: Camera, label: 'Capturar' },
-    { path: '/ubicaciones', icon: MapPin, label: 'Ubicaciones' },
-    { path: '/inventario', icon: Package, label: 'Inventario' },
-    { path: '/ajustes', icon: Settings, label: 'Ajustes' },
-  ]
+  const isLogin = location.pathname === '/login'
 
   return (
     <div className="app">
       <Routes>
-        <Route path="/" element={<HomePage />} />
-        <Route path="/captura" element={<CapturePage />} />
-        <Route path="/revision" element={<ReviewPage />} />
-        <Route path="/ubicaciones" element={<LocationsPage />} />
-        <Route path="/caja/:cajaId" element={<CajaDetailPage />} />
-        <Route path="/balda/:baldaId" element={<BaldaDetailPage />} />
-        <Route path="/print-queue" element={<PrintQueuePage />} />
-        <Route path="/print-sheet" element={<PrintSheetPage />} />
-        <Route path="/inventario" element={<InventoryPage />} />
-        <Route path="/ajustes" element={<SettingsPage />} />
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/" element={<PrivateRoute><HomePage /></PrivateRoute>} />
+        <Route path="/captura" element={<PrivateRoute><CapturePage /></PrivateRoute>} />
+        <Route path="/revision" element={<PrivateRoute><ReviewPage /></PrivateRoute>} />
+        <Route path="/ubicaciones" element={<PrivateRoute><LocationsPage /></PrivateRoute>} />
+        <Route path="/caja/:cajaId" element={<PrivateRoute><CajaDetailPage /></PrivateRoute>} />
+        <Route path="/balda/:baldaId" element={<PrivateRoute><BaldaDetailPage /></PrivateRoute>} />
+        <Route path="/print-queue" element={<PrivateRoute><PrintQueuePage /></PrivateRoute>} />
+        <Route path="/print-sheet" element={<PrivateRoute><PrintSheetPage /></PrivateRoute>} />
+        <Route path="/inventario" element={<PrivateRoute><InventoryPage /></PrivateRoute>} />
+        <Route path="/ajustes" element={<PrivateRoute><SettingsPage /></PrivateRoute>} />
       </Routes>
 
-      <nav className="bottom-nav">
-        {navItems.map(({ path, icon: Icon, label }) => (
-          <NavLink
-            key={path}
-            to={path}
-            className={({ isActive }) => isActive ? 'active' : ''}
-          >
-            <Icon size={24} />
-            <span>{label}</span>
-          </NavLink>
-        ))}
-      </nav>
+      {!isLogin && (
+        <nav className="bottom-nav">
+          {navItems.map(({ path, icon: Icon, label }) => (
+            <NavLink
+              key={path}
+              to={path}
+              className={({ isActive }) => isActive ? 'active' : ''}
+            >
+              <Icon size={24} />
+              <span>{label}</span>
+            </NavLink>
+          ))}
+        </nav>
+      )}
     </div>
+  )
+}
+
+function App() {
+  return (
+    <AuthProvider>
+      <AppLayout />
+    </AuthProvider>
   )
 }
 
