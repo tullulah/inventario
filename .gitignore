@@ -12,6 +12,9 @@ backend/data/*.db-shm
 # Uploads
 backend/uploads/
 
+# Backups
+backups/
+
 # Python
 yolo-service/venv/
 yolo-service/__pycache__/
@@ -39,6 +42,9 @@ npm-debug.log*
 .env
 .env.local
 .env.*.local
+
+# Certificados SSL locales
+*.pem
 
 # YOLO models (too large for GitHub)
 *.pt

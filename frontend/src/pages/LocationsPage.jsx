@@ -587,7 +587,7 @@ export default function LocationsPage() {
                       
                       <div style={{ flex: 1 }}>
                         <div style={{ fontWeight: '500', marginBottom: '0.25rem' }}>
-                          {item.nombre || item.categoria_yolo || 'Item sin nombre'}
+                          {item.categoria_manual || item.nombre || item.descripcion || item.categoria_yolo || 'Item sin nombre'}
                         </div>
                         <div style={{ 
                           fontSize: '0.75rem', 

@@ -33,7 +33,7 @@ export default function HomePage() {
         showBack={false}
       />
 
-      <main className="main-content">
+      <main className="main-content" style={{ paddingBottom: '6rem' }}>
         {loading ? (
           <div className="loader">
             <div className="spinner"></div>

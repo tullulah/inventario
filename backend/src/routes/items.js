@@ -1,15 +1,14 @@
 import express from 'express';
-import db from '../database.js';
+import pool from '../database.js';
 
 const router = express.Router();
 
-// Obtener todos los items (con filtros opcionales)
-router.get('/', (req, res) => {
+router.get('/', async (req, res) => {
   try {
     const { caja_id, revisado, categoria, buscar } = req.query;
-    
+
     let query = `
-      SELECT i.*, 
+      SELECT i.*,
         c.numero as caja_numero,
         c.etiqueta as caja_etiqueta,
         b.numero as balda_numero,
@@ -22,41 +21,38 @@ router.get('/', (req, res) => {
       WHERE 1=1
     `;
     const params = [];
+    let p = 0;
 
     if (caja_id) {
-      query += ' AND i.caja_id = ?';
+      query += ` AND i.caja_id = $${++p}`;
       params.push(caja_id);
     }
-
     if (revisado !== undefined) {
-      query += ' AND i.revisado = ?';
+      query += ` AND i.revisado = $${++p}`;
       params.push(revisado === 'true' ? 1 : 0);
     }
-
     if (categoria) {
-      query += ' AND (i.categoria_manual = ? OR i.categoria_yolo = ?)';
-      params.push(categoria, categoria);
+      query += ` AND (i.categoria_manual = $${++p} OR i.categoria_yolo = $${p})`;
+      params.push(categoria);
     }
-
     if (buscar) {
-      query += ' AND (i.nombre LIKE ? OR i.descripcion LIKE ?)';
-      params.push(`%${buscar}%`, `%${buscar}%`);
+      query += ` AND (i.nombre ILIKE $${++p} OR i.descripcion ILIKE $${p})`;
+      params.push(`%${buscar}%`);
     }
 
     query += ' ORDER BY i.created_at DESC';
 
-    const items = db.prepare(query).all(...params);
-    res.json(items);
+    const { rows } = await pool.query(query, params);
+    res.json(rows);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 });
 
-// Obtener items pendientes de revisión
-router.get('/pendientes', (req, res) => {
+router.get('/pendientes', async (_req, res) => {
   try {
-    const items = db.prepare(`
-      SELECT i.*, 
+    const { rows } = await pool.query(`
+      SELECT i.*,
         c.numero as caja_numero,
         c.etiqueta as caja_etiqueta,
         b.numero as balda_numero,
@@ -68,18 +64,17 @@ router.get('/pendientes', (req, res) => {
       JOIN estanterias e ON b.estanteria_id = e.id
       WHERE i.revisado = 0
       ORDER BY i.created_at ASC
-    `).all();
-    res.json(items);
+    `);
+    res.json(rows);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 });
 
-// Obtener un item por ID
-router.get('/:id', (req, res) => {
+router.get('/:id', async (req, res) => {
   try {
-    const item = db.prepare(`
-      SELECT i.*, 
+    const { rows: [item] } = await pool.query(`
+      SELECT i.*,
         c.numero as caja_numero,
         c.etiqueta as caja_etiqueta,
         b.numero as balda_numero,
@@ -90,17 +85,15 @@ router.get('/:id', (req, res) => {
       JOIN cajas c ON i.caja_id = c.id
       JOIN baldas b ON c.balda_id = b.id
       JOIN estanterias e ON b.estanteria_id = e.id
-      WHERE i.id = ?
-    `).get(req.params.id);
+      WHERE i.id = $1
+    `, [req.params.id]);
 
-    if (!item) {
-      return res.status(404).json({ error: 'Item no encontrado' });
-    }
+    if (!item) return res.status(404).json({ error: 'Item no encontrado' });
 
-    // Obtener fotos del item
-    const fotos = db.prepare(
-      'SELECT * FROM fotos WHERE item_id = ? ORDER BY es_principal DESC, created_at ASC'
-    ).all(req.params.id);
+    const { rows: fotos } = await pool.query(
+      'SELECT * FROM fotos WHERE item_id = $1 ORDER BY es_principal DESC, created_at ASC',
+      [req.params.id]
+    );
 
     res.json({ ...item, fotos });
   } catch (error) {
@@ -108,25 +101,17 @@ router.get('/:id', (req, res) => {
   }
 });
 
-// Crear un nuevo item
-router.post('/', (req, res) => {
+router.post('/', async (req, res) => {
   try {
     const { caja_id, nombre, descripcion, cantidad, categoria_yolo, confianza_yolo } = req.body;
-    
-    const result = db.prepare(`
-      INSERT INTO items (caja_id, nombre, descripcion, cantidad, categoria_yolo, confianza_yolo)
-      VALUES (?, ?, ?, ?, ?, ?)
-    `).run(
-      caja_id,
-      nombre || null,
-      descripcion || null,
-      cantidad || 1,
-      categoria_yolo || null,
-      confianza_yolo || null
-    );
 
-    res.status(201).json({ 
-      id: result.lastInsertRowid,
+    const { rows: [row] } = await pool.query(`
+      INSERT INTO items (caja_id, nombre, descripcion, cantidad, categoria_yolo, confianza_yolo)
+      VALUES ($1, $2, $3, $4, $5, $6) RETURNING id
+    `, [caja_id, nombre || null, descripcion || null, cantidad || 1, categoria_yolo || null, confianza_yolo || null]);
+
+    res.status(201).json({
+      id: row.id,
       caja_id,
       nombre,
       descripcion,
@@ -140,24 +125,16 @@ router.post('/', (req, res) => {
   }
 });
 
-// Actualizar un item
-router.put('/:id', (req, res) => {
+router.put('/:id', async (req, res) => {
   try {
     const { nombre, descripcion, cantidad, categoria_manual, revisado, caja_id } = req.body;
-    
-    db.prepare(`
-      UPDATE items 
-      SET nombre = ?, descripcion = ?, cantidad = ?, categoria_manual = ?, revisado = ?, caja_id = COALESCE(?, caja_id), updated_at = CURRENT_TIMESTAMP
-      WHERE id = ?
-    `).run(
-      nombre,
-      descripcion,
-      cantidad,
-      categoria_manual,
-      revisado ? 1 : 0,
-      caja_id,
-      req.params.id
-    );
+
+    await pool.query(`
+      UPDATE items
+      SET nombre = $1, descripcion = $2, cantidad = $3, categoria_manual = $4,
+          revisado = $5, caja_id = COALESCE($6, caja_id), updated_at = CURRENT_TIMESTAMP
+      WHERE id = $7
+    `, [nombre, descripcion, cantidad, categoria_manual, revisado ? 1 : 0, caja_id, req.params.id]);
 
     res.json({ id: req.params.id, nombre, descripcion, cantidad, categoria_manual, revisado });
   } catch (error) {
@@ -165,20 +142,19 @@ router.put('/:id', (req, res) => {
   }
 });
 
-// Marcar como revisado
-router.patch('/:id/revisar', (req, res) => {
+router.patch('/:id/revisar', async (req, res) => {
   try {
     const { categoria_manual, nombre, descripcion } = req.body;
-    
-    db.prepare(`
-      UPDATE items 
-      SET revisado = 1, 
-          categoria_manual = COALESCE(?, categoria_manual),
-          nombre = COALESCE(?, nombre),
-          descripcion = COALESCE(?, descripcion),
+
+    await pool.query(`
+      UPDATE items
+      SET revisado = 1,
+          categoria_manual = COALESCE($1, categoria_manual),
+          nombre = COALESCE($2, nombre),
+          descripcion = COALESCE($3, descripcion),
           updated_at = CURRENT_TIMESTAMP
-      WHERE id = ?
-    `).run(categoria_manual, nombre, descripcion, req.params.id);
+      WHERE id = $4
+    `, [categoria_manual, nombre, descripcion, req.params.id]);
 
     res.json({ success: true });
   } catch (error) {
@@ -186,10 +162,9 @@ router.patch('/:id/revisar', (req, res) => {
   }
 });
 
-// Eliminar un item
-router.delete('/:id', (req, res) => {
+router.delete('/:id', async (req, res) => {
   try {
-    db.prepare('DELETE FROM items WHERE id = ?').run(req.params.id);
+    await pool.query('DELETE FROM items WHERE id = $1', [req.params.id]);
     res.status(204).send();
   } catch (error) {
     res.status(500).json({ error: error.message });

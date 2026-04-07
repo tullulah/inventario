@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { Search, Filter, Package, Image, ChevronRight, X, Sparkles, Loader2 } from 'lucide-react'
 import { getItems, getArbolUbicaciones, getItem, updateItem, redetectarItem } from '../api'
 import AppHeader from '../components/AppHeader'
+import { ITEM_CATEGORIES } from '../utils/categories'
 
 export default function InventoryPage() {
   const navigate = useNavigate()
@@ -16,6 +17,12 @@ export default function InventoryPage() {
   const [ubicacionFilter, setUbicacionFilter] = useState(null)
   const [detecting, setDetecting] = useState(false)
   const [toast, setToast] = useState(null)
+  const [editingItem, setEditingItem] = useState(false)
+  const [editNombre, setEditNombre] = useState('')
+  const [editCategoria, setEditCategoria] = useState('')
+  const [categoriaFilter, setCategoriaFilter] = useState('')
+
+  const suggestedCategories = ITEM_CATEGORIES
 
   useEffect(() => {
     loadData()
@@ -23,7 +30,7 @@ export default function InventoryPage() {
 
   useEffect(() => {
     loadItems()
-  }, [filter, searchTerm, ubicacionFilter])
+  }, [filter, searchTerm, ubicacionFilter, categoriaFilter])
 
   const loadData = async () => {
     try {
@@ -44,7 +51,17 @@ export default function InventoryPage() {
       if (searchTerm) filters.buscar = searchTerm
       if (ubicacionFilter) filters.caja_id = ubicacionFilter
 
-      const data = await getItems(filters)
+      let data = await getItems(filters)
+      
+      // Filtrar por categoría en el frontend
+      if (categoriaFilter === 'sin-categoria') {
+        data = data.filter(item => !item.categoria_manual && !item.nombre)
+      } else if (categoriaFilter) {
+        data = data.filter(item => 
+          item.categoria_manual === categoriaFilter || item.nombre === categoriaFilter
+        )
+      }
+      
       setItems(data)
     } catch (error) {
       console.error('Error cargando items:', error)
@@ -57,6 +74,9 @@ export default function InventoryPage() {
     try {
       const fullItem = await getItem(item.id)
       setSelectedItem(fullItem)
+      setEditingItem(false)
+      setEditNombre(fullItem.nombre || fullItem.categoria_manual || fullItem.descripcion || '')
+      setEditCategoria(fullItem.categoria_manual || '')
     } catch (error) {
       console.error('Error cargando detalle:', error)
     }
@@ -97,6 +117,29 @@ export default function InventoryPage() {
     }
   }
 
+  const handleSaveEdit = async () => {
+    if (!selectedItem) return
+    try {
+      await updateItem(selectedItem.id, {
+        nombre: editNombre || null,
+        categoria_manual: editCategoria || null,
+        revisado: true
+      })
+      showToast('Item actualizado correctamente')
+      setEditingItem(false)
+      loadItems()
+      // Actualizar el item seleccionado
+      setSelectedItem(prev => ({
+        ...prev,
+        nombre: editNombre,
+        categoria_manual: editCategoria,
+        revisado: true
+      }))
+    } catch (error) {
+      showToast('Error al actualizar: ' + error.message)
+    }
+  }
+
   return (
     <>
       <AppHeader 
@@ -104,47 +147,60 @@ export default function InventoryPage() {
         icon={Package}
         onRefresh={loadData}
       />
-      
-      {/* Botón de filtros adicional */}
-      <div style={{ 
-        position: 'absolute', 
-        top: '1rem', 
-        right: '8rem',
-        zIndex: 10
-      }}>
-        <button 
-          className="header-back" 
-          onClick={() => setShowFilters(!showFilters)}
-          title="Filtros"
-        >
-          <Filter size={20} />
-        </button>
-      </div>
 
       <main className="main-content">
-        {/* Barra de búsqueda */}
-        <form onSubmit={handleSearch} style={{ marginBottom: '1rem' }}>
-          <div style={{ position: 'relative' }}>
-            <Search 
-              size={20} 
-              style={{ 
-                position: 'absolute', 
-                left: '1rem', 
-                top: '50%', 
-                transform: 'translateY(-50%)',
-                color: 'var(--gray-400)'
-              }} 
-            />
-            <input
-              type="text"
+        {/* Barra de búsqueda y filtros */}
+        <div style={{ marginBottom: '1rem' }}>
+          <form onSubmit={handleSearch} style={{ marginBottom: '0.75rem' }}>
+            <div style={{ position: 'relative' }}>
+              <Search 
+                size={20} 
+                style={{ 
+                  position: 'absolute', 
+                  left: '1rem', 
+                  top: '50%', 
+                  transform: 'translateY(-50%)',
+                  color: 'var(--gray-400)'
+                }} 
+              />
+              <input
+                type="text"
+                className="form-input"
+                placeholder="Buscar items..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                style={{ paddingLeft: '3rem' }}
+              />
+            </div>
+          </form>
+          
+          {/* Filtros de categoría y estado */}
+          <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+            <select
               className="form-input"
-              placeholder="Buscar items..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              style={{ paddingLeft: '3rem' }}
-            />
+              value={categoriaFilter}
+              onChange={(e) => setCategoriaFilter(e.target.value)}
+              style={{ flex: 1 }}
+            >
+              <option value="">📦 Todas las categorías</option>
+              <option value="sin-categoria">🔍 Sin categoría</option>
+              <optgroup label="Categorías">
+                {suggestedCategories.map(cat => (
+                  <option key={cat} value={cat}>{cat}</option>
+                ))}
+              </optgroup>
+            </select>
+            
+            <button 
+              className="header-back" 
+              onClick={() => setShowFilters(!showFilters)}
+              title="Más filtros"
+              style={{ flexShrink: 0 }}
+            >
+              <Filter size={20} />
+            </button>
           </div>
-        </form>
+        </div>
 
         {/* Filtros */}
         {showFilters && (
@@ -169,15 +225,43 @@ export default function InventoryPage() {
               </div>
             </div>
 
-            {ubicacionFilter && (
-              <div style={{ marginTop: '0.5rem' }}>
-                <button
-                  className="btn btn-secondary"
-                  style={{ width: '100%' }}
-                  onClick={() => setUbicacionFilter(null)}
-                >
-                  Limpiar filtro de ubicación
-                </button>
+            <div className="form-group" style={{ marginTop: '1rem' }}>
+              <label className="form-label">Categoría</label>
+              <select
+                className="form-input"
+                value={categoriaFilter}
+                onChange={(e) => setCategoriaFilter(e.target.value)}
+              >
+                <option value="">Todas las categorías</option>
+                <option value="sin-categoria">🔍 Sin categoría</option>
+                <optgroup label="Categorías">
+                  {suggestedCategories.map(cat => (
+                    <option key={cat} value={cat}>{cat}</option>
+                  ))}
+                </optgroup>
+              </select>
+            </div>
+
+            {(ubicacionFilter || categoriaFilter) && (
+              <div style={{ marginTop: '0.5rem', display: 'flex', gap: '0.5rem' }}>
+                {ubicacionFilter && (
+                  <button
+                    className="btn btn-secondary"
+                    style={{ flex: 1 }}
+                    onClick={() => setUbicacionFilter(null)}
+                  >
+                    Limpiar ubicación
+                  </button>
+                )}
+                {categoriaFilter && (
+                  <button
+                    className="btn btn-secondary"
+                    style={{ flex: 1 }}
+                    onClick={() => setCategoriaFilter('')}
+                  >
+                    Limpiar categoría
+                  </button>
+                )}
               </div>
             )}
           </div>
@@ -234,7 +318,7 @@ export default function InventoryPage() {
                   )}
                   <div className="item-card-content">
                     <div className="item-card-title">
-                      {item.nombre || item.categoria_manual || item.categoria_yolo || 'Sin nombre'}
+                      {item.categoria_manual || item.nombre || item.descripcion || item.categoria_yolo || 'Sin nombre'}
                     </div>
                     <div className="item-card-meta">
                       {item.estanteria_nombre} → Balda {item.balda_numero} → Caja {item.caja_numero}
@@ -253,8 +337,32 @@ export default function InventoryPage() {
 
       {/* Modal de detalle */}
       {selectedItem && (
-        <div className="modal-overlay" onClick={() => setSelectedItem(null)}>
-          <div className="modal" onClick={e => e.stopPropagation()}>
+        <div 
+          className="modal-overlay" 
+          onClick={() => setSelectedItem(null)}
+          style={{ 
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'rgba(0, 0, 0, 0.5)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1000,
+            overflowY: 'auto'
+          }}
+        >
+          <div 
+            className="modal" 
+            onClick={e => e.stopPropagation()}
+            style={{
+              position: 'relative',
+              margin: '2rem auto',
+              maxWidth: '500px'
+            }}
+          >
             <div className="modal-header">
               <h3 className="modal-title">Detalle del item</h3>
               <button 
@@ -318,13 +426,76 @@ export default function InventoryPage() {
 
               {/* Info */}
               <div style={{ marginBottom: '1rem' }}>
-                <h4 style={{ marginBottom: '0.5rem' }}>
-                  {selectedItem.nombre || 'Sin nombre'}
-                </h4>
-                {selectedItem.descripcion && (
-                  <p style={{ color: 'var(--gray-600)', marginBottom: '0.5rem' }}>
-                    {selectedItem.descripcion}
-                  </p>
+                {editingItem ? (
+                  <div>
+                    <div className="form-group">
+                      <label className="form-label">Nombre</label>
+                      <input
+                        type="text"
+                        className="form-input"
+                        value={editNombre}
+                        onChange={(e) => setEditNombre(e.target.value)}
+                        placeholder="Nombre del item"
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label className="form-label">Categoría</label>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                        {suggestedCategories.map(cat => (
+                          <button
+                            key={cat}
+                            type="button"
+                            className={`btn ${editCategoria === cat ? 'btn-primary' : 'btn-secondary'}`}
+                            style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem' }}
+                            onClick={() => setEditCategoria(cat)}
+                          >
+                            {cat}
+                          </button>
+                        ))}
+                      </div>
+                      <input
+                        type="text"
+                        className="form-input"
+                        value={editCategoria}
+                        onChange={(e) => setEditCategoria(e.target.value)}
+                        placeholder="O escribe una categoría..."
+                      />
+                    </div>
+                    <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1rem' }}>
+                      <button
+                        className="btn btn-secondary"
+                        style={{ flex: 1 }}
+                        onClick={() => setEditingItem(false)}
+                      >
+                        Cancelar
+                      </button>
+                      <button
+                        className="btn btn-primary"
+                        style={{ flex: 1 }}
+                        onClick={handleSaveEdit}
+                      >
+                        Guardar
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div>
+                    <h4 style={{ marginBottom: '0.5rem' }}>
+                      {selectedItem.categoria_manual || selectedItem.nombre || selectedItem.descripcion || 'Sin nombre'}
+                    </h4>
+                    {selectedItem.descripcion && (
+                      <p style={{ color: 'var(--gray-600)', marginBottom: '0.5rem' }}>
+                        {selectedItem.descripcion}
+                      </p>
+                    )}
+                    <button
+                      className="btn btn-secondary"
+                      style={{ marginTop: '0.5rem', fontSize: '0.875rem', padding: '0.25rem 0.5rem' }}
+                      onClick={() => setEditingItem(true)}
+                    >
+                      Editar
+                    </button>
+                  </div>
                 )}
               </div>
 

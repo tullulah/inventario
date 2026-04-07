@@ -1,0 +1,22 @@
+export const ITEM_CATEGORIES = [
+  'Herramientas',
+  'Electrónica',
+  'Informática',
+  'Cables',
+  'Tornillería',
+  'Impresión 3D',
+  'Pintura',
+  'Hardware',
+  'Música',
+  'Decoración',
+  'Seguridad',
+  'Imagen y sonido',
+  'Arcade',
+  'Libros',
+  'Ropa',
+  'Juguetes',
+  'Cocina',
+  'Videojuegos',
+  'Vectrex',
+  'Otros'
+]

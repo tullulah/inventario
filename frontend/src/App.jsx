@@ -1,6 +1,5 @@
 import { Routes, Route, NavLink, useLocation } from 'react-router-dom'
 import { Home, Camera, ClipboardList, Settings, Package, MapPin } from 'lucide-react'
-import { Toaster } from 'react-hot-toast'
 import HomePage from './pages/HomePage'
 import CapturePage from './pages/CapturePage'
 import ReviewPage from './pages/ReviewPage'
@@ -25,7 +24,6 @@ function App() {
 
   return (
     <div className="app">
-      <Toaster position="top-center" />
       <Routes>
         <Route path="/" element={<HomePage />} />
         <Route path="/captura" element={<CapturePage />} />

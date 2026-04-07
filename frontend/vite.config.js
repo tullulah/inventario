@@ -4,6 +4,10 @@ import { VitePWA } from 'vite-plugin-pwa'
 import fs from 'fs'
 import path from 'path'
 
+const certPath = path.resolve(__dirname, '../backend/localhost+3.pem')
+const keyPath = path.resolve(__dirname, '../backend/localhost+3-key.pem')
+const hasLocalCerts = fs.existsSync(certPath) && fs.existsSync(keyPath)
+
 export default defineConfig({
   plugins: [
     react(),
@@ -49,7 +53,7 @@ export default defineConfig({
               cacheName: 'api-cache',
               expiration: {
                 maxEntries: 100,
-                maxAgeSeconds: 60 * 60 * 24 // 24 hours
+                maxAgeSeconds: 60 * 60 * 24
               }
             }
           }
@@ -58,21 +62,23 @@ export default defineConfig({
     })
   ],
   server: {
-    https: {
-      key: fs.readFileSync(path.resolve(__dirname, '../backend/localhost+3-key.pem')),
-      cert: fs.readFileSync(path.resolve(__dirname, '../backend/localhost+3.pem')),
-    },
-    proxy: {
-      '/api': {
-        target: 'https://localhost:3443',
-        changeOrigin: true,
-        secure: false // Aceptar certificados autofirmados
-      },
-      '/uploads': {
-        target: 'https://localhost:3443',
-        changeOrigin: true,
-        secure: false
-      }
-    }
+    host: true,
+    https: hasLocalCerts
+      ? { key: fs.readFileSync(keyPath), cert: fs.readFileSync(certPath) }
+      : false,
+    proxy: hasLocalCerts
+      ? {
+          '/api': {
+            target: 'https://localhost:3443',
+            changeOrigin: true,
+            secure: false
+          }
+        }
+      : {
+          '/api': {
+            target: 'http://localhost:3001',
+            changeOrigin: true
+          }
+        }
   }
 })

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { ArrowLeft, Plus, Minus, ArrowRight, X } from 'lucide-react'
+import { ArrowLeft, Plus, Minus, X } from 'lucide-react'
 import { getItems, deleteItem, updateItem } from '../api'
 
 export default function CajaDetailPage() {
@@ -10,6 +10,7 @@ export default function CajaDetailPage() {
   const [loading, setLoading] = useState(true)
   const [cajaInfo, setCajaInfo] = useState(null)
   const [showMoveDialog, setShowMoveDialog] = useState(null)
+  const [zoomedImage, setZoomedImage] = useState(null)
 
   useEffect(() => {
     loadItems()
@@ -105,18 +106,20 @@ export default function CajaDetailPage() {
                       <img 
                         src={item.foto_principal}
                         alt={item.nombre}
+                        onClick={() => setZoomedImage(item.foto_principal)}
                         style={{
                           width: '60px',
                           height: '60px',
                           objectFit: 'cover',
-                          borderRadius: '6px'
+                          borderRadius: '6px',
+                          cursor: 'pointer'
                         }}
                       />
                     )}
                     
                     <div style={{ flex: 1 }}>
                       <div style={{ fontWeight: '500', marginBottom: '0.25rem' }}>
-                        {item.nombre || item.categoria_yolo || 'Item sin nombre'}
+                        {item.categoria_manual || item.nombre || item.descripcion || item.categoria_yolo || 'Item sin nombre'}
                       </div>
                       <div style={{ 
                         fontSize: '0.75rem', 
@@ -145,6 +148,58 @@ export default function CajaDetailPage() {
           </>
         )}
       </main>
+
+      {/* Modal de imagen ampliada */}
+      {zoomedImage && (
+        <div 
+          onClick={() => setZoomedImage(null)}
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.9)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1000,
+            padding: '1rem'
+          }}
+        >
+          <button
+            onClick={() => setZoomedImage(null)}
+            style={{
+              position: 'absolute',
+              top: '1rem',
+              right: '1rem',
+              background: 'rgba(255, 255, 255, 0.9)',
+              border: 'none',
+              borderRadius: '50%',
+              width: '40px',
+              height: '40px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              cursor: 'pointer',
+              zIndex: 1001
+            }}
+          >
+            <X size={24} />
+          </button>
+          <img 
+            src={zoomedImage}
+            alt="Vista ampliada"
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              maxWidth: '95%',
+              maxHeight: '95%',
+              objectFit: 'contain',
+              borderRadius: '8px'
+            }}
+          />
+        </div>
+      )}
     </>
   )
 }

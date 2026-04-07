@@ -1,35 +1,30 @@
 import express from 'express';
-import db from '../database.js';
+import pool from '../database.js';
 
 const router = express.Router();
 
-// Obtener todas las categorías
-router.get('/', (req, res) => {
+router.get('/', async (_req, res) => {
   try {
-    const categorias = db.prepare(`
-      SELECT c.*, 
+    const { rows } = await pool.query(`
+      SELECT c.*,
         (SELECT nombre FROM categorias WHERE id = c.parent_id) as parent_nombre
       FROM categorias c
       ORDER BY c.nombre
-    `).all();
-    res.json(categorias);
+    `);
+    res.json(rows);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 });
 
-// Obtener categorías en árbol
-router.get('/arbol', (req, res) => {
+router.get('/arbol', async (_req, res) => {
   try {
-    const categorias = db.prepare('SELECT * FROM categorias ORDER BY nombre').all();
-    
+    const { rows: categorias } = await pool.query('SELECT * FROM categorias ORDER BY nombre');
+
     const buildTree = (parentId = null) => {
       return categorias
         .filter(c => c.parent_id === parentId)
-        .map(c => ({
-          ...c,
-          children: buildTree(c.id)
-        }));
+        .map(c => ({ ...c, children: buildTree(c.id) }));
     };
 
     res.json(buildTree());
@@ -38,54 +33,52 @@ router.get('/arbol', (req, res) => {
   }
 });
 
-// Crear categoría
-router.post('/', (req, res) => {
+router.post('/', async (req, res) => {
   try {
     const { nombre, parent_id } = req.body;
-    const result = db.prepare(
-      'INSERT INTO categorias (nombre, parent_id) VALUES (?, ?)'
-    ).run(nombre, parent_id || null);
-    res.status(201).json({ id: result.lastInsertRowid, nombre, parent_id });
+    const { rows: [row] } = await pool.query(
+      'INSERT INTO categorias (nombre, parent_id) VALUES ($1, $2) RETURNING id',
+      [nombre, parent_id || null]
+    );
+    res.status(201).json({ id: row.id, nombre, parent_id });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 });
 
-// Actualizar categoría
-router.put('/:id', (req, res) => {
+router.put('/:id', async (req, res) => {
   try {
     const { nombre, parent_id } = req.body;
-    db.prepare(
-      'UPDATE categorias SET nombre = ?, parent_id = ? WHERE id = ?'
-    ).run(nombre, parent_id, req.params.id);
+    await pool.query(
+      'UPDATE categorias SET nombre = $1, parent_id = $2 WHERE id = $3',
+      [nombre, parent_id, req.params.id]
+    );
     res.json({ id: req.params.id, nombre, parent_id });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 });
 
-// Eliminar categoría
-router.delete('/:id', (req, res) => {
+router.delete('/:id', async (req, res) => {
   try {
-    db.prepare('DELETE FROM categorias WHERE id = ?').run(req.params.id);
+    await pool.query('DELETE FROM categorias WHERE id = $1', [req.params.id]);
     res.status(204).send();
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 });
 
-// Obtener estadísticas por categoría
-router.get('/stats', (req, res) => {
+router.get('/stats', async (_req, res) => {
   try {
-    const stats = db.prepare(`
-      SELECT 
+    const { rows } = await pool.query(`
+      SELECT
         COALESCE(categoria_manual, categoria_yolo, 'Sin categoría') as categoria,
         COUNT(*) as count
       FROM items
       GROUP BY COALESCE(categoria_manual, categoria_yolo, 'Sin categoría')
       ORDER BY count DESC
-    `).all();
-    res.json(stats);
+    `);
+    res.json(rows);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

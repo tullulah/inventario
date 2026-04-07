@@ -3,6 +3,7 @@ import { ArrowLeft, Check, ChevronLeft, ChevronRight, X, Image, Sparkles, Crop, 
 import { useNavigate } from 'react-router-dom'
 import { getItemsPendientes, revisarItem, deleteItem, getCategorias, redetectarItem } from '../api'
 import AppHeader from '../components/AppHeader'
+import { ITEM_CATEGORIES } from '../utils/categories'
 
 export default function ReviewPage() {
   const navigate = useNavigate()
@@ -12,6 +13,7 @@ export default function ReviewPage() {
   const [saving, setSaving] = useState(false)
   const [categorias, setCategorias] = useState([])
   const [detecting, setDetecting] = useState(false)
+  const [zoomedImage, setZoomedImage] = useState(null)
   
   // Campos editables
   const [nombre, setNombre] = useState('')
@@ -262,19 +264,8 @@ export default function ReviewPage() {
     }
   }
 
-  // Categorías sugeridas basadas en YOLO
-  const suggestedCategories = [
-    'Herramientas',
-    'Electrónica',
-    'Cables',
-    'Tornillería',
-    'Decoración',
-    'Libros',
-    'Ropa',
-    'Juguetes',
-    'Cocina',
-    'Otros'
-  ]
+  // Categorías sugeridas
+  const suggestedCategories = ITEM_CATEGORIES
 
   if (loading) {
     return (
@@ -368,12 +359,13 @@ export default function ReviewPage() {
                 ref={imageRef}
                 src={currentItem.foto_principal} 
                 alt="Item"
+                onClick={() => !selectingArea && setZoomedImage(currentItem.foto_principal)}
                 style={{ 
                   width: '100%', 
                   maxHeight: '300px', 
                   objectFit: 'contain', 
                   background: 'var(--gray-100)',
-                  cursor: selectingArea ? 'crosshair' : 'default',
+                  cursor: selectingArea ? 'crosshair' : 'pointer',
                   userSelect: 'none',
                   WebkitUserSelect: 'none'
                 }}
@@ -560,7 +552,7 @@ export default function ReviewPage() {
         </div>
 
         {/* Acciones */}
-        <div style={{ display: 'flex', gap: '0.75rem', marginTop: '1rem' }}>
+        <div style={{ display: 'flex', gap: '0.75rem', marginTop: '1rem', paddingBottom: '3rem' }}>
           <button 
             className="btn btn-danger btn-icon"
             onClick={() => setShowDeleteConfirm(true)}
@@ -624,6 +616,58 @@ export default function ReviewPage() {
       )}
 
       {toast && <div className="toast">{toast}</div>}
+
+      {/* Modal de imagen ampliada */}
+      {zoomedImage && (
+        <div 
+          onClick={() => setZoomedImage(null)}
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.9)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1000,
+            padding: '1rem'
+          }}
+        >
+          <button
+            onClick={() => setZoomedImage(null)}
+            style={{
+              position: 'absolute',
+              top: '1rem',
+              right: '1rem',
+              background: 'rgba(255, 255, 255, 0.9)',
+              border: 'none',
+              borderRadius: '50%',
+              width: '40px',
+              height: '40px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              cursor: 'pointer',
+              zIndex: 1001
+            }}
+          >
+            <X size={24} />
+          </button>
+          <img 
+            src={zoomedImage}
+            alt="Vista ampliada"
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              maxWidth: '95%',
+              maxHeight: '95%',
+              objectFit: 'contain',
+              borderRadius: '8px'
+            }}
+          />
+        </div>
+      )}
     </>
   )
 }

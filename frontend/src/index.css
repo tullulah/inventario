@@ -507,10 +507,6 @@ input, select, textarea {
     padding-bottom: 2rem;
   }
 
-  .bottom-nav {
-    display: none;
-  }
-
   .desktop-nav {
     display: flex;
   }
@@ -816,15 +812,15 @@ input, select, textarea {
 .a4-grid {
   display: grid;
   grid-template-columns: repeat(2, 105mm);
-  grid-template-rows: repeat(4, 74mm);
+  grid-template-rows: repeat(4, 70mm);
   gap: 0;
 }
 
 .a4-label-cell {
   border: 2px solid var(--gray-400);
-  padding: 8mm;
+  padding: 5mm;
   width: 105mm;
-  height: 74mm;
+  height: 70mm;
   background: white;
   overflow: hidden;
   box-sizing: border-box;
@@ -894,8 +890,8 @@ input, select, textarea {
 }
 
 .a4-label-content .label-qr-section canvas {
-  width: 35mm !important;
-  height: 35mm !important;
+  width: 32mm !important;
+  height: 32mm !important;
   display: block !important;
   visibility: visible !important;
 }
@@ -933,7 +929,7 @@ input, select, textarea {
     width: 210mm !important;
     height: 297mm !important;
     background: white !important;
-    padding: 0 !important;
+    padding: 10mm 0 7mm 0 !important;
     margin: 0 !important;
     page-break-after: always !important;
     break-after: page !important;
@@ -946,18 +942,19 @@ input, select, textarea {
   body.printing-sheet .a4-grid-print {
     display: grid !important;
     grid-template-columns: repeat(2, 105mm) !important;
-    grid-template-rows: repeat(4, 74mm) !important;
-    width: 100% !important;
-    height: 100% !important;
+    grid-template-rows: repeat(4, 70mm) !important;
+    width: 210mm !important;
+    height: 280mm !important;
     gap: 0 !important;
+    margin: 0 !important;
   }
 
   body.printing-sheet .a4-label-cell-print {
     width: 105mm !important;
-    height: 74mm !important;
-    border: 1.5px solid #666 !important;
+    height: 70mm !important;
+    border: none !important;
     box-sizing: border-box !important;
-    padding: 3mm !important;
+    padding: 4mm !important;
     overflow: hidden !important;
     page-break-inside: avoid !important;
   }
