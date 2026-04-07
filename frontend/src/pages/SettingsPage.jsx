@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ArrowLeft, Plus, Trash2, Edit2, Save, X, FolderOpen, Layers, Box, Globe } from 'lucide-react'
+import { ArrowLeft, Plus, Trash2, Edit2, Save, X, FolderOpen, Layers, Box, Globe, Lock, LogOut } from 'lucide-react'
+import { useAuth } from '../contexts/AuthContext'
 import { 
   getEstanterias, createEstanteria, updateEstanteria, deleteEstanteria,
   getBaldas, createBalda, deleteBalda,
@@ -10,7 +11,12 @@ import {
 
 export default function SettingsPage() {
   const navigate = useNavigate()
+  const { logout, changePassword } = useAuth()
   const [activeTab, setActiveTab] = useState('ubicaciones')
+  const [oldPassword, setOldPassword] = useState('')
+  const [newPassword, setNewPassword] = useState('')
+  const [newPassword2, setNewPassword2] = useState('')
+  const [changingPassword, setChangingPassword] = useState(false)
   const [toast, setToast] = useState(null)
 
   // Estado de ubicaciones
@@ -176,6 +182,21 @@ export default function SettingsPage() {
       setCategorias(data)
     } catch (error) {
       console.error('Error:', error)
+    }
+  }
+
+  const handleChangePassword = async () => {
+    if (!oldPassword || !newPassword) return showToast('Rellena todos los campos')
+    if (newPassword !== newPassword2) return showToast('Las contraseñas nuevas no coinciden')
+    try {
+      setChangingPassword(true)
+      await changePassword(oldPassword, newPassword)
+      setOldPassword(''); setNewPassword(''); setNewPassword2('')
+      showToast('Contraseña cambiada correctamente')
+    } catch (error) {
+      showToast(error.message)
+    } finally {
+      setChangingPassword(false)
     }
   }
 
@@ -464,6 +485,34 @@ export default function SettingsPage() {
 
         {/* Tab: Configuración */}
         {activeTab === 'config' && (
+          <>
+          <div className="card">
+            <div className="card-header">
+              <h3 className="card-title">Cuenta</h3>
+            </div>
+            <div style={{ padding: '1rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+              <div className="form-group">
+                <label className="form-label">Contraseña actual</label>
+                <input type="password" className="form-input" value={oldPassword} onChange={e => setOldPassword(e.target.value)} />
+              </div>
+              <div className="form-group">
+                <label className="form-label">Nueva contraseña</label>
+                <input type="password" className="form-input" value={newPassword} onChange={e => setNewPassword(e.target.value)} />
+              </div>
+              <div className="form-group">
+                <label className="form-label">Repetir nueva contraseña</label>
+                <input type="password" className="form-input" value={newPassword2} onChange={e => setNewPassword2(e.target.value)} />
+              </div>
+              <button className="btn btn-primary" onClick={handleChangePassword} disabled={changingPassword}>
+                <Lock size={18} />
+                {changingPassword ? 'Guardando...' : 'Cambiar contraseña'}
+              </button>
+              <button className="btn btn-secondary" onClick={logout} style={{ marginTop: '0.5rem' }}>
+                <LogOut size={18} />
+                Cerrar sesión
+              </button>
+            </div>
+          </div>
           <div className="card">
             <div className="card-header">
               <h3 className="card-title">URL de la Aplicación</h3>
@@ -558,6 +607,7 @@ export default function SettingsPage() {
               </div>
             </div>
           </div>
+          </>
         )}
       </main>
 
